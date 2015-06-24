@@ -35,9 +35,19 @@ define(["jquery", "date", "jquery.ui", "jquery.timepicker"], function($, date) {
         );
     };
 
+    var parseDateFromString = function(stringDate){
+        if (stringDate && typeof stringDate === "string"){
+            return new Date(stringDate);
+        }
+        else {
+            return stringDate;
+        }
+    };
+
     return {
         getDate: getDate,
         setDate: setDate,
-        renderDate: renderDate
+        renderDate: renderDate,
+        parseDateFromString: parseDateFromString
     };
 });

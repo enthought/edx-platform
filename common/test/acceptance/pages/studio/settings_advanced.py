@@ -201,4 +201,5 @@ class AdvancedSettingsPage(CoursePage):
             'social_sharing_url',
             'teams_configuration',
             'video_bumper',
+            'web_view_certificates',
         ]

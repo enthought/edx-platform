@@ -1,5 +1,5 @@
-define(["backbone", "underscore", "gettext", "js/models/validation_helpers"],
-    function(Backbone, _, gettext, ValidationHelpers) {
+define(["backbone", "underscore", "gettext", "js/models/validation_helpers", "js/utils/date_utils"],
+    function(Backbone, _, gettext, ValidationHelpers, DateUtils) {
 
 var CourseDetails = Backbone.Model.extend({
     defaults: {
@@ -28,8 +28,13 @@ var CourseDetails = Backbone.Model.extend({
         // Returns either nothing (no return call) so that validate works or an object of {field: errorstring} pairs
         // A bit funny in that the video key validation is asynchronous; so, it won't stop the validation.
         var errors = {};
+        newattrs = this.convertDateStringsToObjects(newattrs);
+
         if (newattrs.start_date === null) {
             errors.start_date = gettext("The course must have an assigned start date.");
+        }
+        if (this.hasChanged("start_date") && this.get("has_cert_config") === false){
+            errors.start_date = gettext("The course must have atleast one active certificate configuration before it can be started.");
         }
         if (newattrs.start_date && newattrs.end_date && newattrs.start_date >= newattrs.end_date) {
             errors.end_date = gettext("The course end date cannot be before the course start date.");
@@ -62,6 +67,15 @@ var CourseDetails = Backbone.Model.extend({
         // NOTE don't return empty errors as that will be interpreted as an error state
     },
 
+    convertDateStringsToObjects: function(attrs){
+        dateFields = ["start_date", "end_date", "enrollment_start", "enrollment_end"];
+        for (var i = 0; i < dateFields.length; i++){
+            if (attrs[dateFields[i]]){
+                attrs[dateFields[i]] = DateUtils.parseDateFromString(attrs[dateFields[i]]);
+            }
+        }
+        return attrs;
+    },
     _videokey_illegal_chars : /[^a-zA-Z0-9_-]/g,
     set_videosource: function(newsource) {
         // newsource either is <video youtube="speed:key, *"/> or just the "speed:key, *" string

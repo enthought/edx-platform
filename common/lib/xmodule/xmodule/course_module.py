@@ -712,6 +712,12 @@ class CourseFields(object):
         scope=Scope.settings,
         default=""
     )
+    web_view_certificates = Boolean(
+        display_name=_("Web View Certificates"),
+        help=_("Enter true or false. If true, web view certificates are enabled for the course"),
+        scope=Scope.settings,
+        default=False,
+    )
     cert_html_view_overrides = Dict(
         # Translators: This field is the container for course-specific certifcate configuration values
         display_name=_("Certificate Web/HTML View Overrides"),
