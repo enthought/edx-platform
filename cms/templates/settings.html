@@ -143,7 +143,7 @@ CMS.URL.UPLOAD_ASSET = '${upload_asset_url}';
                     <li class="field text is-not-editable" id="credit-proctoring-requirements">
                       <label>${_("Successful Proctored Exam")}</label>
                         % for requirement in credit_requirements['proctored_exam']:
-                          <label for="${requirement['name']}" class="sr">${_('Proctored Exam {counter}').format(counter=loop.index+1)}</label>
+                          <label for="${requirement['name']}" class="sr">${_('Proctored Exam {number}').format(number=loop.index+1)}</label>
                           <input title="${_('This field is disabled: this information cannot be changed.')}" type="text"
                               class="long" id="${requirement['name']}" value="${requirement['display_name']}" readonly />
                         % endfor
@@ -152,10 +152,10 @@ CMS.URL.UPLOAD_ASSET = '${upload_asset_url}';
 
                   % if 'reverification' in credit_requirements:
                     <li class="field text is-not-editable" id="credit-reverification-requirements">
-                      <label>${_("Successful In Course Reverification")}</label>
+                      <label>${_("Successful In-course Reverification")}</label>
                         % for requirement in credit_requirements['reverification']:
                           ## Translators: 'Access to Assessment 1' means the access for a requirement with name 'Assessment 1'
-                          <label for="${requirement['name']}" class="sr">${_('In Course Reverification {counter}').format(counter=loop.index+1)}</label>
+                          <label for="${requirement['name']}" class="sr">${_('In-Course Reverification {number}').format(number=loop.index+1)}</label>
                           <input title="${_('This field is disabled: this information cannot be changed.')}" type="text"
                               class="long" id="${requirement['name']}" value="${_('Access to {display_name}').format(display_name=requirement['display_name'])}" readonly />
                         % endfor
