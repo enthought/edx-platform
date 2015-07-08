@@ -6,6 +6,9 @@
 @import 'base/variables';
 @import 'base/mixins';
 
+@import 'enthought/variables'; //insert Enthought theme's sass overrides here
+@import 'build-course'; // shared app style assets/rendering
+
 ## THEMING
 ## -------
 ## Set up this file to import an edX theme library if the environment
@@ -14,9 +17,10 @@
 ## called themes/<theme-name>/, with its base Sass file in
 ## themes/<theme-name>/static/sass/_<theme-name>.scss. That one entry
 ## point can be used to @import in as many other things as needed.
+
 % if env["FEATURES"].get("USE_CUSTOM_THEME", False):
-  // import theme's Sass overrides
+  // import theme's Sass overrides (no variable overrides,
+  // only styling rules)
   @import '${env.get('THEME_NAME')}';
 % endif
 
-@import 'build-course'; // shared app style assets/rendering

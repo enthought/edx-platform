@@ -14,6 +14,9 @@
 @import 'base/variables';
 @import 'base/mixins';
 
+@import 'enthought/variables'; //insert Enthought theme's sass overrides here
+@import 'build-lms'; // shared app style assets/rendering
+
 ## THEMING
 ## -------
 ## Set up this file to import an edX theme library if the environment
@@ -27,4 +30,3 @@
   @import '${env.get('THEME_NAME')}';
 % endif
 
-@import 'build-lms'; // shared app style assets/rendering
