@@ -1886,6 +1886,9 @@ INSTALLED_APPS = (
 
     # Course teams
     'teams',
+
+    # Social apps (without this, deletion of a user doesn't work.)
+    'social.apps.django_app.default',
 )
 
 ######################### CSRF #########################################
