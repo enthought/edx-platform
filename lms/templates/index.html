@@ -19,8 +19,13 @@ from microsite_configuration import microsite
 
 <section class="home">
   <header>
+    ## we wrap the following inside convenient named
+    ## blocks so that these can be easily overridden
+    ## in the theme if required.
+    <%block name='home_outer_wrapper'>
     <div class="outer-wrapper">
       <div class="title">
+      <%block name="home_header_title">
         <hgroup>
           % if homepage_overlay_html:
             ${homepage_overlay_html}
@@ -46,7 +51,7 @@ from microsite_configuration import microsite
             </form>
           </div>
         % endif
-
+      </%block> <!-- /home_header_title -->
       </div>
 
       % if show_homepage_promo_video:
@@ -57,6 +62,7 @@ from microsite_configuration import microsite
         </a>
       % endif
     </div>
+    </%block> <!-- /home_outer_wrapper -->
 
   </header>
   <section class="courses-container">
