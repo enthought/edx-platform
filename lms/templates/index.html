@@ -33,6 +33,8 @@ from microsite_configuration import microsite
             % if self.stanford_theme_enabled():
               <h1>${_("Free courses from <strong>{university_name}</strong>").format(university_name="Stanford")}</h1>
               <h2>${_("For anyone, anywhere, anytime")}</h2>
+            % elif self.theme_enabled():
+              <%include file="theme-homepage-overlay.html"/>
             % else:
               ## Translators: 'Open edX' is a brand, please keep this untranslated. See http://openedx.org for more information.
               <h1>${_("Welcome to Open edX!")}</h1>
