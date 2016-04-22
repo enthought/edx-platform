@@ -5,7 +5,6 @@ Tests for credit course models.
 
 import ddt
 from django.test import TestCase
-
 from opaque_keys.edx.keys import CourseKey
 
 from openedx.core.djangoapps.credit.models import CreditCourse, CreditRequirement
@@ -17,7 +16,7 @@ class CreditEligibilityModelTests(TestCase):
     Tests for credit models used to track credit eligibility.
     """
 
-    def setUp(self, **kwargs):
+    def setUp(self):
         super(CreditEligibilityModelTests, self).setUp()
         self.course_key = CourseKey.from_string("edX/DemoX/Demo_Course")
 
@@ -37,9 +36,9 @@ class CreditEligibilityModelTests(TestCase):
             "display_name": "Grade",
             "criteria": {
                 "min_grade": 0.8
-            }
+            },
         }
-        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement)
+        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement, 0)
         self.assertEqual(credit_course, credit_req.course)
         self.assertEqual(created, True)
         requirements = CreditRequirement.get_course_requirements(self.course_key)
@@ -53,9 +52,9 @@ class CreditEligibilityModelTests(TestCase):
             "display_name": "Grade",
             "criteria": {
                 "min_grade": 0.8
-            }
+            },
         }
-        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement)
+        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement, 0)
         self.assertEqual(credit_course, credit_req.course)
         self.assertEqual(created, True)
 
@@ -63,9 +62,9 @@ class CreditEligibilityModelTests(TestCase):
             "namespace": "reverification",
             "name": "i4x://edX/DemoX/edx-reverification-block/assessment_uuid",
             "display_name": "Assessment 1",
-            "criteria": {}
+            "criteria": {},
         }
-        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement)
+        credit_req, created = CreditRequirement.add_or_update_course_requirement(credit_course, requirement, 1)
         self.assertEqual(credit_course, credit_req.course)
         self.assertEqual(created, True)
 

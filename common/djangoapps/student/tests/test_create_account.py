@@ -1,23 +1,21 @@
 """Tests for account creation"""
+from datetime import datetime
 import json
+import unittest
 
 import ddt
-import unittest
-from django.contrib.auth.models import User
-from django.test.client import RequestFactory
 from django.conf import settings
+from django.contrib.auth.models import User, AnonymousUser
 from django.core.urlresolvers import reverse
-from django.contrib.auth.models import AnonymousUser
-from django.utils.importlib import import_module
 from django.test import TestCase, TransactionTestCase
+from django.test.client import RequestFactory
 from django.test.utils import override_settings
-
+from django.utils.importlib import import_module
 import mock
 
 from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
 from lang_pref import LANGUAGE_KEY
 from notification_prefs import NOTIFICATION_PREF_KEY
-
 from edxmako.tests import mako_middleware_process_request
 from external_auth.models import ExternalAuthMap
 import student
@@ -86,7 +84,8 @@ class TestCreateAccount(TestCase):
     def test_marketing_cookie(self):
         response = self.client.post(self.url, self.params)
         self.assertEqual(response.status_code, 200)
-        self.assertIn(settings.EDXMKTG_COOKIE_NAME, self.client.cookies)
+        self.assertIn(settings.EDXMKTG_LOGGED_IN_COOKIE_NAME, self.client.cookies)
+        self.assertIn(settings.EDXMKTG_USER_INFO_COOKIE_NAME, self.client.cookies)
 
     @unittest.skipUnless(
         "microsite_configuration.middleware.MicrositeMiddleware" in settings.MIDDLEWARE_CLASSES,
@@ -109,6 +108,42 @@ class TestCreateAccount(TestCase):
             }
         )
         self.assertIsNone(profile.year_of_birth)
+
+    @unittest.skipUnless(
+        "microsite_configuration.middleware.MicrositeMiddleware" in settings.MIDDLEWARE_CLASSES,
+        "Microsites not implemented in this environment"
+    )
+    @override_settings(LMS_SEGMENT_KEY="testkey")
+    @mock.patch('student.views.analytics.track')
+    @mock.patch('student.views.analytics.identify')
+    def test_segment_tracking(self, mock_segment_identify, _):
+        year = datetime.now().year
+        self.params.update({
+            "level_of_education": "a",
+            "gender": "o",
+            "mailing_address": "123 Example Rd",
+            "city": "Exampleton",
+            "country": "US",
+            "goals": "To test this feature",
+            "year_of_birth": str(year),
+            "extra1": "extra_value1",
+            "extra2": "extra_value2",
+        })
+
+        expected_payload = {
+            'email': self.params['email'],
+            'username': self.params['username'],
+            'name': self.params['name'],
+            'age': 0,
+            'education': 'Associate degree',
+            'address': self.params['mailing_address'],
+            'gender': 'Other/Prefer Not to Say',
+            'country': self.params['country'],
+        }
+
+        self.create_account_and_fetch_profile()
+
+        mock_segment_identify.assert_called_with(1, expected_payload)
 
     @unittest.skipUnless(
         "microsite_configuration.middleware.MicrositeMiddleware" in settings.MIDDLEWARE_CLASSES,
@@ -309,7 +344,7 @@ class TestCreateAccountValidation(TestCase):
 
         # Invalid
         params["username"] = "invalid username"
-        assert_username_error("Username should only consist of A-Z and 0-9, with no spaces.")
+        assert_username_error("Usernames must contain only letters, numbers, underscores (_), and hyphens (-).")
 
     def test_email(self):
         params = dict(self.minimal_params)

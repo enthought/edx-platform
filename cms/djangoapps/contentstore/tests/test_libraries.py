@@ -105,7 +105,7 @@ class LibraryTestCase(ModuleStoreTestCase):
         if user not in self.session_data:
             self.session_data[user] = {}
         request = Mock(user=user, session=self.session_data[user])
-        _load_preview_module(request, descriptor)  # pylint: disable=protected-access
+        _load_preview_module(request, descriptor)
 
     def _update_item(self, usage_key, metadata):
         """
@@ -387,7 +387,7 @@ class TestLibraries(LibraryTestCase):
         html_block = modulestore().get_item(lc_block.children[0])
         self.assertEqual(html_block.data, data2)
 
-    @patch("xmodule.library_tools.SearchEngine.get_search_engine", Mock(return_value=None))
+    @patch("xmodule.library_tools.SearchEngine.get_search_engine", Mock(return_value=None, autospec=True))
     def test_refreshes_children_if_capa_type_change(self):
         """ Tests that children are automatically refreshed if capa type field changes """
         name1, name2 = "Option Problem", "Multiple Choice Problem"
@@ -523,13 +523,13 @@ class TestLibraryAccess(SignalDisconnectTestMixin, LibraryTestCase):
         self.client.logout()
         self._assert_cannot_create_library(expected_code=302)  # 302 redirect to login expected
 
-        # Now create a non-staff user with no permissions:
+        # Now check that logged-in users without CourseCreator role can still create libraries
         self._login_as_non_staff_user(logout_first=False)
         self.assertFalse(CourseCreatorRole().has_user(self.non_staff_user))
-
-        # Now check that logged-in users without any permissions cannot create libraries
         with patch.dict('django.conf.settings.FEATURES', {'ENABLE_CREATOR_GROUP': True}):
-            self._assert_cannot_create_library()
+            lib_key2 = self._create_library(library="lib2", display_name="Test Library 2")
+            library2 = modulestore().get_library(lib_key2)
+            self.assertIsNotNone(library2)
 
     @ddt.data(
         CourseInstructorRole,

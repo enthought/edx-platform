@@ -20,7 +20,7 @@ from lazy import lazy
 
 from xblock.core import XBlock, XBlockAside
 from xblock.fields import (
-    Scope, Integer, Float, List, XBlockMixin,
+    Scope, Integer, Float, List,
     String, Dict, ScopeIds, Reference, ReferenceList,
     ReferenceValueDict, UserScope
 )
@@ -35,7 +35,6 @@ from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.asides import AsideUsageKeyV1, AsideDefinitionKeyV1
 from xmodule.exceptions import UndefinedContext
 import dogstats_wrapper as dog_stats_api
-
 
 log = logging.getLogger(__name__)
 
@@ -143,7 +142,7 @@ class OpaqueKeyReader(IdReader):
         return aside_id.aside_type
 
 
-class AsideKeyGenerator(IdGenerator):  # pylint: disable=abstract-method
+class AsideKeyGenerator(IdGenerator):
     """
     An :class:`.IdGenerator` that only provides facilities for constructing new XBlockAsides.
     """
@@ -265,7 +264,7 @@ class XModuleFields(object):
     )
 
 
-class XModuleMixin(XModuleFields, XBlockMixin):
+class XModuleMixin(XModuleFields, XBlock):
     """
     Fields and methods used by XModules internally.
 
@@ -277,6 +276,10 @@ class XModuleMixin(XModuleFields, XBlockMixin):
     # It should respond to max_score() and grade(). It can be graded or ungraded
     # (like a practice problem).
     has_score = False
+
+    # Whether this module can be displayed in read-only mode.  It is safe to set this to True if
+    # all user state is handled through the FieldData API.
+    show_in_read_only_mode = False
 
     # Class level variable
 
@@ -295,7 +298,6 @@ class XModuleMixin(XModuleFields, XBlockMixin):
 
     def __init__(self, *args, **kwargs):
         self.xmodule_runtime = None
-        self._child_instances = None
 
         super(XModuleMixin, self).__init__(*args, **kwargs)
 
@@ -372,7 +374,7 @@ class XModuleMixin(XModuleFields, XBlockMixin):
         """
         result = {}
         for field in self.fields.values():
-            if (field.scope == scope and field.is_set_on(self)):
+            if field.scope == scope and field.is_set_on(self):
                 result[field.name] = field.read_json(self)
         return result
 
@@ -424,39 +426,45 @@ class XModuleMixin(XModuleFields, XBlockMixin):
         else:
             return [self.display_name_with_default]
 
-    def get_children(self, usage_key_filter=None):
+    def get_children(self, usage_id_filter=None, usage_key_filter=None):  # pylint: disable=arguments-differ
         """Returns a list of XBlock instances for the children of
         this module"""
 
-        if not self.has_children:
-            return []
+        # Be backwards compatible with callers using usage_key_filter
+        if usage_id_filter is None and usage_key_filter is not None:
+            usage_id_filter = usage_key_filter
 
-        if self._child_instances is None:
-            self._child_instances = []  # pylint: disable=attribute-defined-outside-init
-            for child_loc in self.children:
-                # Skip if it doesn't satisfy the filter function
-                if usage_key_filter and not usage_key_filter(child_loc):
-                    continue
-                try:
-                    child = self.runtime.get_block(child_loc)
-                    if child is None:
-                        continue
+        return [
+            child
+            for child
+            in super(XModuleMixin, self).get_children(usage_id_filter)
+            if child is not None
+        ]
 
-                    child.runtime.export_fs = self.runtime.export_fs
-                except ItemNotFoundError:
-                    log.warning(u'Unable to load item {loc}, skipping'.format(loc=child_loc))
-                    dog_stats_api.increment(
-                        "xmodule.item_not_found_error",
-                        tags=[
-                            u"course_id:{}".format(child_loc.course_key),
-                            u"block_type:{}".format(child_loc.block_type),
-                            u"parent_block_type:{}".format(self.location.block_type),
-                        ]
-                    )
-                    continue
-                self._child_instances.append(child)
+    def get_child(self, usage_id):
+        """
+        Return the child XBlock identified by ``usage_id``, or ``None`` if there
+        is an error while retrieving the block.
+        """
+        try:
+            child = super(XModuleMixin, self).get_child(usage_id)
+        except ItemNotFoundError:
+            log.warning(u'Unable to load item %s, skipping', usage_id)
+            dog_stats_api.increment(
+                "xmodule.item_not_found_error",
+                tags=[
+                    u"course_id:{}".format(usage_id.course_key),
+                    u"block_type:{}".format(usage_id.block_type),
+                    u"parent_block_type:{}".format(self.location.block_type),
+                ]
+            )
+            return None
 
-        return self._child_instances
+        if child is None:
+            return None
+
+        child.runtime.export_fs = self.runtime.export_fs
+        return child
 
     def get_required_module_descriptors(self):
         """Returns a list of XModuleDescriptor instances upon which this module depends, but are
@@ -573,7 +581,7 @@ class XModuleMixin(XModuleFields, XBlockMixin):
         self.scope_ids = self.scope_ids._replace(user_id=user_id)
 
         # Clear out any cached instantiated children.
-        self._child_instances = None
+        self.clear_child_cache()
 
         # Clear out any cached field data scoped to the old user.
         for field in self.fields.values():
@@ -582,6 +590,11 @@ class XModuleMixin(XModuleFields, XBlockMixin):
 
             if field.scope.user == UserScope.ONE:
                 field._del_cached_value(self)  # pylint: disable=protected-access
+                # not the most elegant way of doing this, but if we're removing
+                # a field from the module's field_data_cache, we should also
+                # remove it from its _dirty_fields
+                if field in self._dirty_fields:
+                    del self._dirty_fields[field]
 
         # Set the new xmodule_runtime and field_data (which are user-specific)
         self.xmodule_runtime = xmodule_runtime
@@ -737,7 +750,7 @@ module_runtime_attr = partial(ProxyAttribute, 'xmodule_runtime')  # pylint: disa
 
 
 @XBlock.needs("i18n")
-class XModule(XModuleMixin, HTMLSnippet, XBlock):  # pylint: disable=abstract-method
+class XModule(HTMLSnippet, XModuleMixin):
     """ Implements a generic learning module.
 
         Subclasses must at a minimum provide a definition for get_html in order
@@ -749,6 +762,7 @@ class XModule(XModuleMixin, HTMLSnippet, XBlock):  # pylint: disable=abstract-me
     entry_point = "xmodule.v1"
 
     has_score = descriptor_attr('has_score')
+    show_in_read_only_mode = descriptor_attr('show_in_read_only_mode')
     _field_data_cache = descriptor_attr('_field_data_cache')
     _field_data = descriptor_attr('_field_data')
     _dirty_fields = descriptor_attr('_dirty_fields')
@@ -767,7 +781,6 @@ class XModule(XModuleMixin, HTMLSnippet, XBlock):  # pylint: disable=abstract-me
 
         # Set the descriptor first so that we can proxy to it
         self.descriptor = descriptor
-        self._loaded_children = None
         self._runtime = None
         super(XModule, self).__init__(*args, **kwargs)
         self.runtime.xmodule_instance = self
@@ -819,6 +832,19 @@ class XModule(XModuleMixin, HTMLSnippet, XBlock):  # pylint: disable=abstract-me
 
         response_data = self.handle_ajax(suffix, request_post)
         return Response(response_data, content_type='application/json')
+
+    def get_child(self, usage_id):
+        if usage_id in self._child_cache:
+            return self._child_cache[usage_id]
+
+        # Take advantage of the children cache that the descriptor might have
+        child_descriptor = self.descriptor.get_child(usage_id)
+        child_block = None
+        if child_descriptor is not None:
+            child_block = self.system.get_module(child_descriptor)
+
+        self._child_cache[usage_id] = child_block
+        return child_block
 
     def get_child_descriptors(self):
         """
@@ -932,7 +958,7 @@ class ResourceTemplates(object):
 
 
 @XBlock.needs("i18n")
-class XModuleDescriptor(XModuleMixin, HTMLSnippet, ResourceTemplates, XBlock):
+class XModuleDescriptor(HTMLSnippet, ResourceTemplates, XModuleMixin):
     """
     An XModuleDescriptor is a specification for an element of a course. This
     could be a problem, an organizational element (a group of content), or a
@@ -1103,6 +1129,7 @@ class XModuleDescriptor(XModuleMixin, HTMLSnippet, ResourceTemplates, XBlock):
                     descriptor=self,
                     scope_ids=self.scope_ids,
                     field_data=self._field_data,
+                    for_parent=self.get_parent() if self.has_cached_parent else None
                 )
                 self.xmodule_runtime.xmodule_instance.save()
             except Exception:  # pylint: disable=broad-except
@@ -1148,7 +1175,7 @@ class XModuleDescriptor(XModuleMixin, HTMLSnippet, ResourceTemplates, XBlock):
         return Fragment(self.get_html())
 
 
-class ConfigurableFragmentWrapper(object):  # pylint: disable=abstract-method
+class ConfigurableFragmentWrapper(object):
     """
     Runtime mixin that allows for composition of many `wrap_xblock` wrappers
     """
@@ -1178,8 +1205,11 @@ class ConfigurableFragmentWrapper(object):  # pylint: disable=abstract-method
 
 # This function exists to give applications (LMS/CMS) a place to monkey-patch until
 # we can refactor modulestore to split out the FieldData half of its interface from
-# the Runtime part of its interface. This function matches the Runtime.handler_url interface
-def descriptor_global_handler_url(block, handler_name, suffix='', query='', thirdparty=False):  # pylint: disable=invalid-name, unused-argument
+# the Runtime part of its interface. This function mostly matches the
+# Runtime.handler_url interface.
+#
+# The monkey-patching happens in (lms|cms)/startup.py
+def descriptor_global_handler_url(block, handler_name, suffix='', query='', thirdparty=False):  # pylint: disable=unused-argument
     """
     See :meth:`xblock.runtime.Runtime.handler_url`.
     """
@@ -1189,6 +1219,8 @@ def descriptor_global_handler_url(block, handler_name, suffix='', query='', thir
 # This function exists to give applications (LMS/CMS) a place to monkey-patch until
 # we can refactor modulestore to split out the FieldData half of its interface from
 # the Runtime part of its interface. This function matches the Runtime.local_resource_url interface
+#
+# The monkey-patching happens in (lms|cms)/startup.py
 def descriptor_global_local_resource_url(block, uri):  # pylint: disable=invalid-name, unused-argument
     """
     See :meth:`xblock.runtime.Runtime.local_resource_url`.
@@ -1276,13 +1308,13 @@ class MetricsMixin(object):
             )
 
 
-class DescriptorSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # pylint: disable=abstract-method
+class DescriptorSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):
     """
     Base class for :class:`Runtime`s to be used with :class:`XModuleDescriptor`s
     """
-
+    # pylint: disable=bad-continuation
     def __init__(
-        self, load_item, resources_fs, error_tracker, get_policy=None, **kwargs
+        self, load_item, resources_fs, error_tracker, get_policy=None, disabled_xblock_types=(), **kwargs
     ):
         """
         load_item: Takes a Location and returns an XModuleDescriptor
@@ -1340,9 +1372,19 @@ class DescriptorSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # p
         else:
             self.get_policy = lambda u: {}
 
-    def get_block(self, usage_id):
+        self.disabled_xblock_types = disabled_xblock_types
+
+    def get_block(self, usage_id, for_parent=None):
         """See documentation for `xblock.runtime:Runtime.get_block`"""
-        return self.load_item(usage_id)
+        return self.load_item(usage_id, for_parent=for_parent)
+
+    def load_block_type(self, block_type):
+        """
+        Returns a subclass of :class:`.XBlock` that corresponds to the specified `block_type`.
+        """
+        if block_type in self.disabled_xblock_types:
+            return self.default_class
+        return super(DescriptorSystem, self).load_block_type(block_type)
 
     def get_field_provenance(self, xblock, field):
         """
@@ -1500,7 +1542,7 @@ class XMLParsingSystem(DescriptorSystem):
             return value
         return course_key.make_usage_key_from_deprecated_string(value)
 
-    def _convert_reference_fields_to_keys(self, xblock):  # pylint: disable=invalid-name
+    def _convert_reference_fields_to_keys(self, xblock):
         """
         Find all fields of type reference and convert the payload into UsageKeys
         """
@@ -1522,7 +1564,7 @@ class XMLParsingSystem(DescriptorSystem):
                     setattr(xblock, field.name, field_value)
 
 
-class ModuleSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # pylint: disable=abstract-method
+class ModuleSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):
     """
     This is an abstraction such that x_modules can function independent
     of the courseware (e.g. import into other types of courseware, LMS,
@@ -1541,7 +1583,6 @@ class ModuleSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # pylin
             replace_urls, descriptor_runtime, user=None, filestore=None,
             debug=False, hostname="", xqueue=None, publish=None, node_path="",
             anonymous_student_id='', course_id=None,
-            open_ended_grading_interface=None, s3_interface=None,
             cache=None, can_execute_unsafe_code=None, replace_course_urls=None,
             replace_jump_to_id_urls=None, error_descriptor_class=None, get_real_user=None,
             field_data=None, get_user_role=None, rebind_noauth_module_to_user=None,
@@ -1636,9 +1677,6 @@ class ModuleSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # pylin
         if publish:
             self.publish = publish
 
-        self.open_ended_grading_interface = open_ended_grading_interface
-        self.s3_interface = s3_interface
-
         self.cache = cache or DoNothingCache()
         self.can_execute_unsafe_code = can_execute_unsafe_code or (lambda: False)
         self.get_python_lib_zip = get_python_lib_zip or (lambda: None)
@@ -1681,8 +1719,8 @@ class ModuleSystem(MetricsMixin, ConfigurableFragmentWrapper, Runtime):  # pylin
         assert self.xmodule_instance is not None
         return self.handler_url(self.xmodule_instance, 'xmodule_handler', '', '').rstrip('/?')
 
-    def get_block(self, block_id):
-        return self.get_module(self.descriptor_runtime.get_block(block_id))
+    def get_block(self, block_id, for_parent=None):
+        return self.get_module(self.descriptor_runtime.get_block(block_id, for_parent=for_parent))
 
     def resource_url(self, resource):
         raise NotImplementedError("edX Platform doesn't currently implement XBlock resource urls")
@@ -1705,7 +1743,6 @@ class CombinedSystem(object):
     #
     # At runtime, the ModuleSystem and/or DescriptorSystem will define those methods
     #
-    # pylint: disable=abstract-method
     def __init__(self, module_system, descriptor_system):
         # These attributes are set directly to __dict__ below to avoid a recursion in getattr/setattr.
         self._module_system = module_system
@@ -1736,6 +1773,7 @@ class CombinedSystem(object):
         integrate it into a larger whole.
 
         """
+        context = context or {}
         if view_name in PREVIEW_VIEWS:
             block = self._get_student_block(block)
 
@@ -1781,6 +1819,7 @@ class CombinedSystem(object):
         DescriptorSystem, instead. This allows XModuleDescriptors that are bound as XModules
         to still function as XModuleDescriptors.
         """
+        # First we try a lookup in the module system...
         try:
             return getattr(self._module_system, name)
         except AttributeError:

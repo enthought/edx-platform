@@ -108,26 +108,7 @@
             }
         }
     },
-    "OPEN_ENDED_GRADING_INTERFACE": {
-        "grading_controller": "grading_controller",
-        "password": "password",
-        "peer_grading": "peer_grading",
-        "staff_grading": "staff_grading",
-        "url": "** OVERRIDDEN **",
-        "username": "lms"
-    },
     "SECRET_KEY": "",
-    "THIRD_PARTY_AUTH": {
-        "Dummy": {},
-        "Google": {
-            "SOCIAL_AUTH_GOOGLE_OAUTH2_KEY": "test",
-            "SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET": "test"
-        },
-        "Facebook": {
-            "SOCIAL_AUTH_FACEBOOK_KEY": "test",
-            "SOCIAL_AUTH_FACEBOOK_SECRET": "test"
-        }
-    },
     "DJFS": {
             "type": "s3fs",
             "bucket": "test",

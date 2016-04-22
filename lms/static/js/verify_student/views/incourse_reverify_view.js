@@ -30,14 +30,13 @@
             this.usageId = obj.usageId || null;
 
 
-            this.model = new edx.verify_student.ReverificationModel({
+            this.model = new edx.verify_student.VerificationModel({
                 courseKey: this.courseKey,
-                usageId: this.usageId
+                checkpoint: this.usageId
             });
 
             this.listenTo( this.model, 'sync', _.bind( this.handleSubmitPhotoSuccess, this ));
             this.listenTo( this.model, 'error', _.bind( this.handleSubmissionError, this ));
-            this.render();
         },
 
         render: function() {
@@ -75,8 +74,7 @@
         },
 
         handleSubmitPhotoSuccess: function(redirect_url) {
-            // Eventually this will be a redirect back into the courseware,
-            // but for now we can return to the student dashboard.
+            // Redirect back to the courseware at the checkpoint location
             window.location.href = redirect_url;
         },
 
