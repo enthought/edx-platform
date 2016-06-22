@@ -73,7 +73,13 @@ class LoginSessionView(APIView):
 
         # Translators: These instructions appear on the login form, immediately
         # below a field meant to hold the user's email address.
-        email_instructions = _("The email address you used to register with {platform_name}").format(
+        email_instructions = _(
+            "The email address you used to register with {platform_name}. "
+            "(Note: This login is separate from the main Enthought website "
+            "and Canopy login and you may have used a different username or "
+            "password to register here.  Thank you for your patience while we "
+            "work to integrate these systems)."
+        ).format(
             platform_name=settings.PLATFORM_NAME
         )
 
