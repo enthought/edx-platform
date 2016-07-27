@@ -23,8 +23,8 @@ class EnthoughtAuthBackend(object):
         If a User object is not found in the local database, it creates one.
         """
 
-        email = requests.POST.get('email')
-        password = requests.POST.get('password')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
 
         authenticated = self._authenticate_on_enthought_api(email, password)
 
