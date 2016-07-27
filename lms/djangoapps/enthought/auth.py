@@ -14,7 +14,7 @@ class EnthoughtAuthBackend(object):
 
     """
 
-    def authenticate(self, username=None, password=None):
+    def authenticate(self, request=None, **kwargs):
         """
         Try to authenticate a user. This method will try to authenticate the
         user on the Enthought API system and if successful, return a User
@@ -23,17 +23,20 @@ class EnthoughtAuthBackend(object):
         If a User object is not found in the local database, it creates one.
         """
 
-        authenticated = self._authenticate_on_enthought_api(username, password)
+        email = requests.POST.get('email')
+        password = requests.POST.get('password')
+
+        authenticated = self._authenticate_on_enthought_api(email, password)
 
         if not authenticated:
             return None
 
         else:
             try:
-                user = User.objects.get(username=username)
+                user = User.objects.get(email=email)
 
             except User.DoesNotExist:
-                user = User(username=username)
+                user = User(email=email, username=username)
                 user.set_password(password)
                 user.save()
 
