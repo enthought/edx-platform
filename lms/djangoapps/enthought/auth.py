@@ -36,7 +36,7 @@ class EnthoughtAuthBackend(object):
                 user = User.objects.get(email=email)
 
             except User.DoesNotExist:
-                user = User(email=email, username=username)
+                user = User(email=email, username=email)
                 user.set_password(password)
                 user.save()
 
@@ -54,14 +54,14 @@ class EnthoughtAuthBackend(object):
 
     #### Private protocol #####################################################
 
-    def _authenticate_on_enthought_api(self, username, password):
+    def _authenticate_on_enthought_api(self, email, password):
         """ Authenticate the user on api.enthought.com. """
 
         url = 'https://api.enthought.com/accounts/user/info/'
 
         headers = {
             'Authorization': (
-                'Basic ' + b64encode('%s:%s' % (username, password))
+                'Basic ' + b64encode('%s:%s' % (email, password))
             )
         }
 
