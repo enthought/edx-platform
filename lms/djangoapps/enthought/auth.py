@@ -7,6 +7,10 @@ import requests
 # 3rd party library.
 from django.contrib.auth.models import User
 
+# edX library.
+from student.forms import AccountCreationForm
+from student.views import _do_create_account
+
 
 class EnthoughtAuthBackend(object):
     """ A Django authentication backend that authenticates users via the
@@ -26,9 +30,10 @@ class EnthoughtAuthBackend(object):
         email = request.POST.get('email')
         password = request.POST.get('password')
 
-        authenticated = self._authenticate_on_enthought_api(email, password)
+        import pdb; pdb.set_trace()
+        user_data = self._authenticate_on_enthought_api(email, password)
 
-        if not authenticated:
+        if user_data is None:
             return None
 
         else:
@@ -36,9 +41,7 @@ class EnthoughtAuthBackend(object):
                 user = User.objects.get(email=email)
 
             except User.DoesNotExist:
-                user = User(email=email, username=email)
-                user.set_password(password)
-                user.save()
+                user = self._create_user(email, password, user_data)
 
             return user
 
@@ -72,3 +75,26 @@ class EnthoughtAuthBackend(object):
 
         else:
             return response.json()
+
+    def _create_user(self, email, password, user_data):
+        """ Create a user given email and password. """
+
+        user, profile, registration = _do_create_account(
+            AccountCreationForm(
+                data         = {
+                    'username': email,
+                    'email'   : email,
+                    'password': password,
+                    'name'    : (
+                        user_data['first_name'] + ' ' + user_data['last_name']
+                    )
+                },
+                tos_required = False
+            )
+        )
+
+        if user_data['is_active']:
+            registration.activate()
+            registration.save()
+
+        return user
