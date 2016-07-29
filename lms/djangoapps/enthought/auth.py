@@ -5,11 +5,24 @@ from base64 import b64encode
 import requests
 
 # 3rd party library.
+from django import forms
 from django.contrib.auth.models import User
 
 # edX library.
 from student.forms import AccountCreationForm
 from student.views import _do_create_account
+
+
+class MyAccountCreationForm(AccountCreationForm):
+    username = forms.CharField(
+        min_length=2,
+        max_length=30,
+        error_messages={
+            "required": "Username too short",
+            "min_length": "Username too short",
+            "max_length": "Username cannot be more than %(limit_value)s characters long",
+        }
+    )
 
 
 class EnthoughtAuthBackend(object):
@@ -80,7 +93,7 @@ class EnthoughtAuthBackend(object):
         """ Create a user given email and password. """
 
         user, profile, registration = _do_create_account(
-            AccountCreationForm(
+            MyAccountCreationForm(
                 data         = {
                     'username': email,
                     'email'   : email,
