@@ -78,7 +78,7 @@ class EnthoughtAuthBackend(object):
         response = requests.post(url, headers=headers)
 
         if not response.ok:
-            return False
+            return None
 
         else:
             return response.json()
