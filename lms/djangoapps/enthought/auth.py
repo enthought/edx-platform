@@ -18,7 +18,7 @@ class EnthoughtAuthBackend(object):
 
     """
 
-    def authenticate(self, request=None, **kwargs):
+    def authenticate(self, username=None, password=None, request=None):
         """
         Try to authenticate a user. This method will try to authenticate the
         user on the Enthought API system and if successful, return a User
@@ -27,21 +27,24 @@ class EnthoughtAuthBackend(object):
         If a User object is not found in the local database, it creates one.
         """
 
-        email = request.POST.get('email')
-        password = request.POST.get('password')
+        if not username:
+            username = request.POST.get('email')
 
-        user_data = self._authenticate_on_enthought_api(email, password)
+        if not password:
+            password = request.POST.get('password')
+
+        user_data = self._authenticate_on_enthought_api(username, password)
 
         if user_data is None:
             return None
 
         else:
             try:
-                user = User.objects.get(email=email)
+                user = User.objects.get(username=username)
 
             except User.DoesNotExist:
                 user = self._create_user(
-                    email      = email,
+                    username   = username,
                     password   = password,
                     first_name = user_data['first_name'],
                     last_name  = user_data['last_name'],
@@ -64,14 +67,14 @@ class EnthoughtAuthBackend(object):
 
     #### Private protocol #####################################################
 
-    def _authenticate_on_enthought_api(self, email, password):
+    def _authenticate_on_enthought_api(self, username, password):
         """ Authenticate the user on api.enthought.com. """
 
         url = 'https://api.enthought.com/accounts/user/info/'
 
         headers = {
             'Authorization': (
-                'Basic ' + b64encode('%s:%s' % (email, password))
+                'Basic ' + b64encode('%s:%s' % (username, password))
             )
         }
 
@@ -83,8 +86,8 @@ class EnthoughtAuthBackend(object):
         else:
             return response.json()
 
-    def _create_user(self, email, password, first_name, last_name, is_active):
-        """ Create a user given email, password and other data.
+    def _create_user(self, username, password, first_name, last_name, is_active):
+        """ Create a user given username, password and other data.
 
         Note that we have to do a full-fledged account creation with profile
         and registration as well, so a simple `User.objects.create(...)` will
@@ -98,8 +101,8 @@ class EnthoughtAuthBackend(object):
         user, profile, registration = _do_create_account(
             EnthoughtAccountCreationForm(
                 data         = {
-                    'username': email,
-                    'email'   : email,
+                    'username': username,
+                    'email'   : username,
                     'password': password,
                     'name'    : first_name + ' ' + last_name
                 },
