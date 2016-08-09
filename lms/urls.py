@@ -106,7 +106,7 @@ if settings.FEATURES["ENABLE_COMBINED_LOGIN_REGISTRATION"]:
         url(r'^login$', 'student_account.views.login_and_registration_form',
             {'initial_mode': 'login'}, name="signin_user"),
         url(r'^register$',
-            RedirectView.as_view(url='https://store.enthought.com/account/login'),
+            RedirectView.as_view(url='https://store.enthought.com/accounts/login'),
             name="register_user"
         ),
     )
