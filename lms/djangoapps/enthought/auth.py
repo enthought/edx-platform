@@ -2,6 +2,7 @@
 
 # Standard library.
 from base64 import b64encode
+import os
 import requests
 
 # 3rd party library.
@@ -70,13 +71,15 @@ class EnthoughtAuthBackend(object):
     def _authenticate_on_enthought_api(self, username, password):
         """ Authenticate the user on api.enthought.com. """
 
-        url = 'https://api.enthought.com/accounts/user/info/'
+        url = 'https://api.enthought.com/api/users/%s/' % username
+        api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
 
-        headers = {
-            'Authorization': (
-                'Basic ' + b64encode('%s:%s' % (username, password))
+        if api_token is None:
+            raise RuntimeError(
+                '$ENTHOUGHT_API_TOKEN environment variable not set.'
             )
-        }
+
+        headers = {'Authorization': 'Token ' + api_token}
 
         response = requests.post(url, headers=headers)
 
