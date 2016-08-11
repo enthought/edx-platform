@@ -81,7 +81,7 @@ class EnthoughtAuthBackend(object):
 
         headers = {'Authorization': 'Token ' + api_token}
 
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, verify=False)
 
         if not response.ok:
             return None
