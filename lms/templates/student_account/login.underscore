@@ -81,5 +81,6 @@
             <span class="text"><%- _.sprintf( gettext("New to %(platformName)s?"), context ) %></span>
         </h2>
     </div>
-    <button class="nav-btn form-toggle" data-type="register"><%- gettext("Create an account") %></button>
+    <a class="nav-btn" href="/register" target="_blank"><%- gettext("Create an account")
+    %></a>
 </div>
