@@ -72,7 +72,6 @@ class EnthoughtAuthBackend(object):
     #### Private protocol #####################################################
 
     _API_ROOT   = 'https://api.enthought.com'
-    _VERIFY_SSL = False
 
     def _authenticate(self, username, password):
         """ Authenticate the user on api.enthought.com. """
@@ -80,7 +79,7 @@ class EnthoughtAuthBackend(object):
         url  = self._API_ROOT + '/token-auth/'
         data = {'username': username, 'password': password}
 
-        authenticated = requests.post(url, data=data, verify=self._VERIFY_SSL)
+        authenticated = requests.post(url, data=data)
         user_data     = self._get_user_data(username)
 
         if authenticated.ok:
@@ -128,8 +127,7 @@ class EnthoughtAuthBackend(object):
     def _get_user_data(self, username):
         """ Get user data from API. """
 
-        api_root = 'http://api.enthought.org'
-        url = api_root + '/api/users/%s/' % username
+        url = self._API_ROOT + '/api/users/%s/' % username
         api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
 
         if api_token is None:
@@ -139,7 +137,7 @@ class EnthoughtAuthBackend(object):
 
         headers = {'Authorization': 'Token ' + api_token}
 
-        response = requests.get(url, headers=headers, verify=self._VERIFY_SSL)
+        response = requests.get(url, headers=headers)
 
         return response.json()
 
