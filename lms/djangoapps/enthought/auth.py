@@ -71,7 +71,7 @@ class EnthoughtAuthBackend(object):
     def _authenticate_on_enthought_api(self, username, password):
         """ Authenticate the user on api.enthought.com. """
 
-        url = 'https://api.enthought.com/api/users/%s/' % username
+        url = 'https://api.enthought.org/api/users/%s/' % username
         api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
 
         if api_token is None:
@@ -81,7 +81,7 @@ class EnthoughtAuthBackend(object):
 
         headers = {'Authorization': 'Token ' + api_token}
 
-        response = requests.post(url, headers=headers)
+        response = requests.get(url, headers=headers)
 
         if not response.ok:
             return None
