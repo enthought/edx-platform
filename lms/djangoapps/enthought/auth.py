@@ -34,12 +34,13 @@ class EnthoughtAuthBackend(object):
         if not password:
             password = request.POST.get('password')
 
-        user_data = self._authenticate_on_enthought_api(username, password)
+        authenticated = self._authenticate(username, password)
 
-        if user_data is None:
+        if not authenticated:
             return None
 
         else:
+            user_data = self._get_user_data(username)
             try:
                 user = User.objects.get(username=username)
 
@@ -68,26 +69,18 @@ class EnthoughtAuthBackend(object):
 
     #### Private protocol #####################################################
 
-    def _authenticate_on_enthought_api(self, username, password):
+    _API_ROOT   = 'http://api.enthought.org'
+    _VERIFY_SSL = False
+
+    def _authenticate(self, username, password):
         """ Authenticate the user on api.enthought.com. """
 
-        url = 'https://api.enthought.org/api/users/%s/' % username
-        api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
+        url  = self._API_ROOT + '/token-auth/'
+        data = {'username': username, 'password': password}
 
-        if api_token is None:
-            raise RuntimeError(
-                '$ENTHOUGHT_API_TOKEN environment variable not set.'
-            )
+        response = requests.post(url, data=data, verify=self._VERIFY_SSL)
 
-        headers = {'Authorization': 'Token ' + api_token}
-
-        response = requests.get(url, headers=headers, verify=False)
-
-        if not response.ok:
-            return None
-
-        else:
-            return response.json()
+        return response.ok
 
     def _create_user(self, username, password, first_name, last_name, is_active):
         """ Create a user given username, password and other data.
@@ -118,6 +111,23 @@ class EnthoughtAuthBackend(object):
             registration.save()
 
         return user
+
+    def _get_user_data(self, username):
+        """ Get user data from API. """
+
+        url = self._API_ROOT + '/api/users/%s/' % username
+        api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
+
+        if api_token is None:
+            raise RuntimeError(
+                '$ENTHOUGHT_API_TOKEN environment variable not set.'
+            )
+
+        headers = {'Authorization': 'Token ' + api_token}
+
+        response = requests.get(url, headers=headers, verify=self._VERIFY_SSL)
+
+        return response.json()
 
 
 class EnthoughtAccountCreationForm(AccountCreationForm):
