@@ -34,13 +34,15 @@ class EnthoughtAuthBackend(object):
         if not password:
             password = request.POST.get('password')
 
-        authenticated = self._authenticate(username, password)
+        status, user_data = self._authenticate(username, password)
 
-        if not authenticated:
-            return None
+        if status == 'invalid':
+            user = None
+
+        elif status == 'inactive':
+            user = User(username=username, is_active=False)
 
         else:
-            user_data = self._get_user_data(username)
             try:
                 user = User.objects.get(username=username)
 
@@ -53,7 +55,7 @@ class EnthoughtAuthBackend(object):
                     is_active  = user_data['is_active']
                 )
 
-            return user
+        return user
 
     def get_user(self, user_id):
         """ Return the User object for a user that has already been
@@ -69,7 +71,7 @@ class EnthoughtAuthBackend(object):
 
     #### Private protocol #####################################################
 
-    _API_ROOT   = 'http://api.enthought.org'
+    _API_ROOT   = 'https://api.enthought.com'
     _VERIFY_SSL = False
 
     def _authenticate(self, username, password):
@@ -78,9 +80,20 @@ class EnthoughtAuthBackend(object):
         url  = self._API_ROOT + '/token-auth/'
         data = {'username': username, 'password': password}
 
-        response = requests.post(url, data=data, verify=self._VERIFY_SSL)
+        authenticated = requests.post(url, data=data, verify=self._VERIFY_SSL)
+        user_data     = self._get_user_data(username)
 
-        return response.ok
+        if authenticated.ok:
+            status = 'success'
+
+        else:
+            if user_data.get('is_active') is False:
+                status = 'inactive'
+
+            else:
+                status = 'invalid'
+
+        return status, user_data
 
     def _create_user(self, username, password, first_name, last_name, is_active):
         """ Create a user given username, password and other data.
@@ -115,7 +128,8 @@ class EnthoughtAuthBackend(object):
     def _get_user_data(self, username):
         """ Get user data from API. """
 
-        url = self._API_ROOT + '/api/users/%s/' % username
+        api_root = 'http://api.enthought.org'
+        url = api_root + '/api/users/%s/' % username
         api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
 
         if api_token is None:
