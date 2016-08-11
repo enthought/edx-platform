@@ -1,7 +1,6 @@
 """ Authenticate the user using Enthought credentials. """
 
 # Standard library.
-from base64 import b64encode
 import os
 import requests
 
@@ -139,7 +138,13 @@ class EnthoughtAuthBackend(object):
 
         response = requests.get(url, headers=headers)
 
-        return response.json()
+        try:
+            user_data = response.json()
+
+        except:
+            user_data = {}
+
+        return user_data
 
 
 class EnthoughtAccountCreationForm(AccountCreationForm):
