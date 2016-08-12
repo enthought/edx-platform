@@ -6,6 +6,7 @@ import requests
 
 # 3rd party library.
 from django import forms
+from django.conf import settings
 from django.contrib.auth.models import User
 
 # edX library.
@@ -127,7 +128,10 @@ class EnthoughtAuthBackend(object):
         """ Get user data from API. """
 
         url = self._API_ROOT + '/api/users/%s/' % username
-        api_token = os.environ.get('ENTHOUGHT_API_TOKEN')
+        api_token = (
+            settings.ENTHOUGHT_API_TOKEN or
+            os.environ.get('ENTHOUGHT_API_TOKEN')
+        )
 
         if api_token is None:
             raise RuntimeError(
