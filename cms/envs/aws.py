@@ -370,3 +370,7 @@ PROCTORING_SETTINGS = ENV_TOKENS.get("PROCTORING_SETTINGS", PROCTORING_SETTINGS)
 
 # OpenID Connect issuer ID. Normally the URL of the authentication endpoint.
 OAUTH_OIDC_ISSUER = ENV_TOKENS['OAUTH_OIDC_ISSUER']
+
+################## ENTHOUGHT SPECIFIC ##################################
+
+ENTHOUGHT_API_TOKEN = ENV_TOKENS.get('ENTHOUGHT_API_TOKEN')
